@@ -13,6 +13,7 @@ export default function RootLayout({ children }) {
           <span className="font-bold text-lg tracking-wide">⚜ Confraria</span>
           <a href="/" className="text-stone-300 hover:text-white text-sm">Famílias</a>
           <a href="/familias/nova" className="text-stone-300 hover:text-white text-sm">+ Nova Família</a>
+		  <a href="/configuracoes" className="text-stone-300 hover:text-white text-sm">Configurações</a>
         </nav>
         <main className="max-w-5xl mx-auto px-4 py-8">
           {children}
