@@ -7,39 +7,53 @@ import Link from 'next/link'
 export default function Home() {
   const [familias, setFamilias] = useState([])
   const [membros, setMembros] = useState([])
+  const [lugares, setLugares] = useState([])
+  const [freguesias, setFreguesias] = useState([])
   const [pesquisa, setPesquisa] = useState('')
+  const [filtroLugar, setFiltroLugar] = useState('')
+  const [filtroFreguesia, setFiltroFreguesia] = useState('')
+  const [filtroEstado, setFiltroEstado] = useState('')
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    carregarTudo()
-  }, [])
+  useEffect(() => { carregarTudo() }, [])
 
   async function carregarTudo() {
     setLoading(true)
-    const [famRes, memRes] = await Promise.all([
-      supabase
-        .from('familias')
-        .select(`id, chefe_nome, ativo, lugar:lugar_id(nome), freguesia:freguesia_id(nome), familia_membros(id)`)
-        .order('chefe_nome'),
-      supabase
-        .from('familia_membros')
-        .select('id, nome, familia_id, familias(id, chefe_nome)')
-        .order('nome'),
+    const [famRes, memRes, lugRes, freqRes] = await Promise.all([
+      supabase.from('familias').select(`id, chefe_nome, ativo, lugar:lugar_id(id,nome), freguesia:freguesia_id(id,nome), familia_membros(id)`).order('chefe_nome'),
+      supabase.from('familia_membros').select('id, nome, familia_id, familias(id, chefe_nome)').order('nome'),
+      supabase.from('lugares').select('id, nome').order('nome'),
+      supabase.from('freguesias').select('id, nome').order('nome'),
     ])
     if (!famRes.error) setFamilias(famRes.data)
     if (!memRes.error) setMembros(memRes.data)
+    setLugares(lugRes.data || [])
+    setFreguesias(freqRes.data || [])
     setLoading(false)
   }
 
   const termo = pesquisa.toLowerCase().trim()
 
-  const familiasFiltradas = termo
-    ? familias.filter(f => f.chefe_nome.toLowerCase().includes(termo))
-    : familias
+  const familiasFiltradas = familias.filter(f => {
+    if (termo && !f.chefe_nome.toLowerCase().includes(termo)) return false
+    if (filtroLugar && f.lugar?.id !== parseInt(filtroLugar)) return false
+    if (filtroFreguesia && f.freguesia?.id !== parseInt(filtroFreguesia)) return false
+    if (filtroEstado === 'ativa' && !f.ativo) return false
+    if (filtroEstado === 'inativa' && f.ativo) return false
+    return true
+  })
 
   const membrosFiltrados = termo
     ? membros.filter(m => m.nome.toLowerCase().includes(termo))
     : []
+
+  const temFiltros = filtroLugar || filtroFreguesia || filtroEstado
+
+  function limparFiltros() {
+    setFiltroLugar('')
+    setFiltroFreguesia('')
+    setFiltroEstado('')
+  }
 
   return (
     <div>
@@ -51,19 +65,49 @@ export default function Home() {
         </Link>
       </div>
 
+      {/* Pesquisa */}
       <input
         type="text"
         placeholder="Pesquisar por nome do chefe ou membro..."
         value={pesquisa}
         onChange={e => setPesquisa(e.target.value)}
-        className="w-full border border-gray-300 rounded px-4 py-2 mb-6 focus:outline-none focus:ring-2 focus:ring-stone-400"
+        className="w-full border border-gray-300 rounded px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-stone-400"
       />
+
+      {/* Filtros */}
+      <div className="flex gap-3 mb-6 flex-wrap">
+        <select value={filtroFreguesia} onChange={e => setFiltroFreguesia(e.target.value)}
+          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400">
+          <option value="">Todas as freguesias</option>
+          {freguesias.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+        </select>
+
+        <select value={filtroLugar} onChange={e => setFiltroLugar(e.target.value)}
+          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400">
+          <option value="">Todos os lugares</option>
+          {lugares.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
+        </select>
+
+        <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
+          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400">
+          <option value="">Todos os estados</option>
+          <option value="ativa">Ativas</option>
+          <option value="inativa">Inativas</option>
+        </select>
+
+        {temFiltros && (
+          <button onClick={limparFiltros}
+            className="text-sm text-stone-500 hover:text-stone-700 underline px-2">
+            Limpar filtros
+          </button>
+        )}
+      </div>
 
       {loading ? (
         <p className="text-gray-500">A carregar...</p>
       ) : (
         <>
-          {/* Resultados de membros (só quando há pesquisa) */}
+          {/* Resultados de membros */}
           {termo && membrosFiltrados.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded shadow mb-6 overflow-hidden">
               <div className="px-4 py-2 bg-amber-100 text-amber-800 text-xs font-semibold uppercase">
@@ -75,9 +119,7 @@ export default function Home() {
                     <Link href={`/familias/${m.familia_id}`}
                       className="flex items-center justify-between px-4 py-3 hover:bg-amber-100 text-sm">
                       <span className="text-stone-800">{m.nome}</span>
-                      <span className="text-stone-500 text-xs">
-                        família de {m.familias?.chefe_nome} →
-                      </span>
+                      <span className="text-stone-500 text-xs">família de {m.familias?.chefe_nome} →</span>
                     </Link>
                   </li>
                 ))}
@@ -87,11 +129,6 @@ export default function Home() {
 
           {/* Tabela de famílias */}
           <div className="bg-white rounded shadow overflow-hidden">
-            {termo && (
-              <div className="px-4 py-2 bg-stone-100 text-stone-600 text-xs font-semibold uppercase">
-                Chefes de família ({familiasFiltradas.length})
-              </div>
-            )}
             <table className="w-full text-sm">
               <thead className="bg-stone-100 text-stone-600 uppercase text-xs">
                 <tr>
@@ -122,6 +159,7 @@ export default function Home() {
             </table>
             <div className="px-4 py-3 text-xs text-gray-400 border-t border-gray-100">
               {familiasFiltradas.length} família{familiasFiltradas.length !== 1 ? 's' : ''}
+              {temFiltros && ' (filtrado)'}
             </div>
           </div>
         </>
