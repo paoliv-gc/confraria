@@ -1,9 +1,68 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { getPerfil } from '../lib/auth'
 import Link from 'next/link'
+
+function MultiSelect({ label, options, selected, onChange }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  useEffect(() => {
+    function handleClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  function toggle(val) {
+    if (selected.includes(val)) onChange(selected.filter(v => v !== val))
+    else onChange([...selected, val])
+  }
+
+  function selectAll() { onChange(options.map(o => o.value)) }
+  function clearAll() { onChange([]) }
+
+  const label_text = selected.length === 0
+    ? `Todas as ${label}`
+    : selected.length === options.length
+    ? `Todas as ${label}`
+    : `${selected.length} ${label} seleccionada${selected.length > 1 ? 's' : ''}`
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className={`border rounded px-3 py-2 text-sm text-left min-w-[180px] flex items-center justify-between gap-2 focus:outline-none focus:ring-2 focus:ring-stone-400 ${selected.length > 0 && selected.length < options.length ? 'border-stone-500 bg-stone-50' : 'border-gray-300 bg-white'}`}>
+        <span className="truncate">{label_text}</span>
+        <span className="text-gray-400 text-xs">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open && (
+        <div className="absolute z-50 mt-1 bg-white border border-gray-200 rounded shadow-lg min-w-[220px] max-h-72 overflow-y-auto">
+          <div className="flex gap-2 px-3 py-2 border-b border-gray-100">
+            <button onClick={selectAll} className="text-xs text-stone-600 hover:text-stone-800 underline">Todas</button>
+            <span className="text-gray-300">|</span>
+            <button onClick={clearAll} className="text-xs text-stone-600 hover:text-stone-800 underline">Nenhuma</button>
+          </div>
+          {options.map(opt => (
+            <label key={opt.value} className="flex items-center gap-2 px-3 py-2 hover:bg-stone-50 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={selected.includes(opt.value)}
+                onChange={() => toggle(opt.value)}
+                className="accent-stone-700"
+              />
+              <span>{opt.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function Home() {
   const [familias, setFamilias] = useState([])
@@ -11,8 +70,8 @@ export default function Home() {
   const [lugares, setLugares] = useState([])
   const [freguesias, setFreguesias] = useState([])
   const [pesquisa, setPesquisa] = useState('')
-  const [filtroLugar, setFiltroLugar] = useState('')
-  const [filtroFreguesia, setFiltroFreguesia] = useState('')
+  const [filtroLugares, setFiltroLugares] = useState([])
+  const [filtroFreguesias, setFiltroFreguesias] = useState([])
   const [filtroEstado, setFiltroEstado] = useState('')
   const [loading, setLoading] = useState(true)
   const [perfil, setPerfil] = useState(null)
@@ -46,8 +105,8 @@ export default function Home() {
 
   const familiasFiltradas = familias.filter(f => {
     if (termo && !f.chefe_nome.toLowerCase().includes(termo)) return false
-    if (filtroLugar && f.lugar?.id !== parseInt(filtroLugar)) return false
-    if (filtroFreguesia && f.freguesia?.id !== parseInt(filtroFreguesia)) return false
+    if (filtroLugares.length > 0 && !filtroLugares.includes(f.lugar?.id?.toString())) return false
+    if (filtroFreguesias.length > 0 && !filtroFreguesias.includes(f.freguesia?.id?.toString())) return false
     if (filtroEstado === 'ativa' && !f.ativo) return false
     if (filtroEstado === 'inativa' && f.ativo) return false
     return true
@@ -57,13 +116,16 @@ export default function Home() {
     ? membros.filter(m => m.nome.toLowerCase().includes(termo))
     : []
 
-  const temFiltros = filtroLugar || filtroFreguesia || filtroEstado
+  const temFiltros = filtroLugares.length > 0 || filtroFreguesias.length > 0 || filtroEstado
 
   function limparFiltros() {
-    setFiltroLugar('')
-    setFiltroFreguesia('')
+    setFiltroLugares([])
+    setFiltroFreguesias([])
     setFiltroEstado('')
   }
+
+  const lugaresOpts = lugares.map(l => ({ value: l.id.toString(), label: l.nome }))
+  const freguesiasOpts = freguesias.map(f => ({ value: f.id.toString(), label: f.nome }))
 
   return (
     <div>
@@ -85,26 +147,25 @@ export default function Home() {
         className="w-full border border-gray-300 rounded px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-stone-400"
       />
 
-      <div className="flex gap-3 mb-6 flex-wrap">
-        <select value={filtroFreguesia} onChange={e => setFiltroFreguesia(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400">
-          <option value="">Todas as freguesias</option>
-          {freguesias.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-        </select>
-
-        <select value={filtroLugar} onChange={e => setFiltroLugar(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400">
-          <option value="">Todos os lugares</option>
-          {lugares.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
-        </select>
-
+      <div className="flex gap-3 mb-6 flex-wrap items-center">
+        <MultiSelect
+          label="freguesias"
+          options={freguesiasOpts}
+          selected={filtroFreguesias}
+          onChange={setFiltroFreguesias}
+        />
+        <MultiSelect
+          label="lugares"
+          options={lugaresOpts}
+          selected={filtroLugares}
+          onChange={setFiltroLugares}
+        />
         <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)}
-          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400">
+          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400 bg-white">
           <option value="">Todos os estados</option>
           <option value="ativa">Ativas</option>
           <option value="inativa">Inativas</option>
         </select>
-
         {temFiltros && (
           <button onClick={limparFiltros}
             className="text-sm text-stone-500 hover:text-stone-700 underline px-2">

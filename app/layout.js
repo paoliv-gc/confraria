@@ -23,7 +23,8 @@ export default function RootLayout({ children }) {
                 <>
                   <a href="/familias/nova" className="text-stone-300 hover:text-white text-sm">+ Nova Família</a>
                   <a href="/configuracoes" className="text-stone-300 hover:text-white text-sm">Configurações</a>
-                </>
+                  <a href="/cotas" className="text-stone-300 hover:text-white text-sm">Cotas</a>
+				</>
               )}
               <div className="ml-auto flex items-center gap-4">
                 <span className="text-stone-400 text-xs">{perfil?.user?.email}</span>
