@@ -24,33 +24,45 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100 flex items-center justify-center">
-      <div className="bg-white rounded shadow p-8 w-full max-w-sm space-y-5">
-        <div className="text-center">
-          <div className="text-3xl mb-2">⚜</div>
-          <h1 className="text-xl font-bold text-stone-800">Confraria</h1>
-          <p className="text-sm text-gray-500">Gestão de famílias</p>
+    <div style={{minHeight: '100vh', background: '#f8fafc', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+      <div style={{background: 'white', borderRadius: '14px', border: '1px solid #e5e7eb', padding: '2.5rem 2rem', width: '100%', maxWidth: '380px'}}>
+
+        {/* Logo */}
+        <div style={{textAlign: 'center', marginBottom: '2rem'}}>
+          <div style={{width: '44px', height: '44px', borderRadius: '10px', background: '#4f46e5', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem', fontSize: '22px'}}>⚜</div>
+          <h1 style={{fontSize: '18px', fontWeight: 500, color: '#111', marginBottom: '4px'}}>Confraria</h1>
+          <p style={{fontSize: '13px', color: '#9ca3af'}}>Gestão de famílias</p>
         </div>
 
-        <div className="space-y-3">
+        {/* Formulário */}
+        <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1rem'}}>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Email</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            <label style={{fontSize: '12px', color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '4px'}}>Email</label>
+            <input
+              type="email" value={email} onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && entrar()}
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
+              style={{width: '100%'}} autoFocus />
           </div>
           <div>
-            <label className="block text-xs text-gray-500 mb-1">Password</label>
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            <label style={{fontSize: '12px', color: '#6b7280', fontWeight: 500, display: 'block', marginBottom: '4px'}}>Password</label>
+            <input
+              type="password" value={password} onChange={e => setPassword(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && entrar()}
-              className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
+              style={{width: '100%'}} />
           </div>
         </div>
 
-        {erro && <p className="text-red-500 text-sm text-center">{erro}</p>}
+        {erro && (
+          <div style={{background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '0.6rem 0.75rem', fontSize: '13px', color: '#dc2626', marginBottom: '1rem'}}>
+            {erro}
+          </div>
+        )}
 
-        <button onClick={entrar} disabled={loading}
-          className="w-full bg-stone-800 text-white py-2 rounded hover:bg-stone-700 font-medium disabled:opacity-50">
+        <button onClick={entrar} disabled={loading} style={{
+          width: '100%', padding: '0.6rem', fontSize: '14px', fontWeight: 500,
+          background: loading ? '#a5b4fc' : '#4f46e5', color: 'white',
+          border: 'none', borderRadius: '8px', cursor: loading ? 'default' : 'pointer'
+        }}>
           {loading ? 'A entrar...' : 'Entrar'}
         </button>
       </div>
