@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 
+const card = { background: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', padding: '1.25rem' }
+
 export default function Configuracoes() {
   const [lugares, setLugares] = useState([])
   const [freguesias, setFreguesias] = useState([])
@@ -25,135 +27,94 @@ export default function Configuracoes() {
   async function adicionarLugar() {
     if (!novoLugar.trim()) return
     await supabase.from('lugares').insert({ nome: novoLugar.trim() })
-    setNovoLugar('')
-    carregar()
+    setNovoLugar(''); carregar()
   }
 
   async function adicionarFreguesia() {
     if (!novaFreguesia.trim()) return
     await supabase.from('freguesias').insert({ nome: novaFreguesia.trim() })
-    setNovaFreguesia('')
-    carregar()
+    setNovaFreguesia(''); carregar()
   }
 
   async function guardarLugar(id, nome) {
     if (!nome.trim()) return
     await supabase.from('lugares').update({ nome: nome.trim() }).eq('id', id)
-    setEditandoLugar(null)
-    carregar()
+    setEditandoLugar(null); carregar()
   }
 
   async function guardarFreguesia(id, nome) {
     if (!nome.trim()) return
     await supabase.from('freguesias').update({ nome: nome.trim() }).eq('id', id)
-    setEditandoFreguesia(null)
-    carregar()
+    setEditandoFreguesia(null); carregar()
   }
 
   async function apagarLugar(id, nome) {
-    if (!confirm(`Apagar "${nome}"? As famílias associadas ficarão sem lugar.`)) return
-    await supabase.from('lugares').delete().eq('id', id)
-    carregar()
+    if (!confirm(`Apagar "${nome}"?`)) return
+    await supabase.from('lugares').delete().eq('id', id); carregar()
   }
 
   async function apagarFreguesia(id, nome) {
-    if (!confirm(`Apagar "${nome}"? As famílias associadas ficarão sem freguesia.`)) return
-    await supabase.from('freguesias').delete().eq('id', id)
-    carregar()
+    if (!confirm(`Apagar "${nome}"?`)) return
+    await supabase.from('freguesias').delete().eq('id', id); carregar()
   }
 
-  return (
-    <div className="max-w-3xl space-y-8">
-      <h1 className="text-2xl font-bold text-stone-800">Configurações</h1>
-
-      {/* Lugares */}
-      <div className="bg-white rounded shadow p-6">
-        <h2 className="font-semibold text-stone-700 mb-4">Lugares</h2>
-
-        <div className="flex gap-2 mb-4">
-          <input value={novoLugar} onChange={e => setNovoLugar(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && adicionarLugar()}
-            placeholder="Novo lugar..."
-            className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
-          <button onClick={adicionarLugar}
-            className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700 text-sm">
-            Adicionar
-          </button>
+  const ListaItem = ({ item, editando, setEditando, onGuardar, onApagar }) => (
+    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'0.45rem 0',borderBottom:'1px solid #f9fafb'}}>
+      {editando?.id === item.id ? (
+        <div style={{display:'flex',gap:'8px',flex:1}}>
+          <input value={editando.nome} onChange={e => setEditando({...editando, nome: e.target.value})}
+            onKeyDown={e => e.key === 'Enter' && onGuardar(item.id, editando.nome)}
+            style={{flex:1,fontSize:'13px'}} autoFocus />
+          <button onClick={() => onGuardar(item.id, editando.nome)} style={{fontSize:'12px',color:'#059669',background:'none',border:'none',cursor:'pointer',fontWeight:500}}>guardar</button>
+          <button onClick={() => setEditando(null)} style={{fontSize:'12px',color:'#9ca3af',background:'none',border:'none',cursor:'pointer'}}>cancelar</button>
         </div>
+      ) : (
+        <>
+          <span style={{fontSize:'13px',color:'#374151'}}>{item.nome}</span>
+          <div style={{display:'flex',gap:'12px'}}>
+            <button onClick={() => setEditando({id:item.id,nome:item.nome})} style={{fontSize:'12px',color:'#6366f1',background:'none',border:'none',cursor:'pointer'}}>editar</button>
+            <button onClick={() => onApagar(item.id, item.nome)} style={{fontSize:'12px',color:'#dc2626',background:'none',border:'none',cursor:'pointer'}}>apagar</button>
+          </div>
+        </>
+      )}
+    </div>
+  )
 
-        <ul className="divide-y divide-gray-100">
-          {lugares.map(l => (
-            <li key={l.id} className="flex items-center justify-between py-2">
-              {editandoLugar?.id === l.id ? (
-                <div className="flex gap-2 flex-1">
-                  <input value={editandoLugar.nome}
-                    onChange={e => setEditandoLugar({...editandoLugar, nome: e.target.value})}
-                    onKeyDown={e => e.key === 'Enter' && guardarLugar(l.id, editandoLugar.nome)}
-                    className="flex-1 border rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
-                  <button onClick={() => guardarLugar(l.id, editandoLugar.nome)}
-                    className="text-green-600 hover:text-green-800 text-sm">guardar</button>
-                  <button onClick={() => setEditandoLugar(null)}
-                    className="text-gray-400 hover:text-gray-600 text-sm">cancelar</button>
-                </div>
-              ) : (
-                <>
-                  <span className="text-sm">{l.nome}</span>
-                  <div className="flex gap-3">
-                    <button onClick={() => setEditandoLugar({id: l.id, nome: l.nome})}
-                      className="text-stone-500 hover:text-stone-700 text-xs">editar</button>
-                    <button onClick={() => apagarLugar(l.id, l.nome)}
-                      className="text-red-400 hover:text-red-600 text-xs">apagar</button>
-                  </div>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+  const Coluna = ({ titulo, count, valor, setValor, onAdicionar, items, editando, setEditando, onGuardar, onApagar }) => (
+    <div style={card}>
+      <h2 style={{fontSize:'15px',fontWeight:500,color:'#111',marginBottom:'2px'}}>{titulo}</h2>
+      <div style={{fontSize:'11px',color:'#9ca3af',marginBottom:'1rem'}}>{count} registos</div>
+      <div style={{display:'flex',gap:'8px',marginBottom:'1rem'}}>
+        <input value={valor} onChange={e => setValor(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && onAdicionar()}
+          placeholder={`Novo${titulo === 'Lugares' ? ' lugar' : 'a freguesia'}...`}
+          style={{flex:1}} />
+        <button onClick={onAdicionar} style={{padding:'0.45rem 0.9rem',fontSize:'13px',fontWeight:500,background:'#4f46e5',color:'white',border:'none',borderRadius:'8px',cursor:'pointer'}}>+</button>
       </div>
+      <div>
+        {items.map(item => (
+          <ListaItem key={item.id} item={item} editando={editando} setEditando={setEditando} onGuardar={onGuardar} onApagar={onApagar} />
+        ))}
+      </div>
+    </div>
+  )
 
-      {/* Freguesias */}
-      <div className="bg-white rounded shadow p-6">
-        <h2 className="font-semibold text-stone-700 mb-4">Freguesias</h2>
-
-        <div className="flex gap-2 mb-4">
-          <input value={novaFreguesia} onChange={e => setNovaFreguesia(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && adicionarFreguesia()}
-            placeholder="Nova freguesia..."
-            className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
-          <button onClick={adicionarFreguesia}
-            className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700 text-sm">
-            Adicionar
-          </button>
-        </div>
-
-        <ul className="divide-y divide-gray-100">
-          {freguesias.map(f => (
-            <li key={f.id} className="flex items-center justify-between py-2">
-              {editandoFreguesia?.id === f.id ? (
-                <div className="flex gap-2 flex-1">
-                  <input value={editandoFreguesia.nome}
-                    onChange={e => setEditandoFreguesia({...editandoFreguesia, nome: e.target.value})}
-                    onKeyDown={e => e.key === 'Enter' && guardarFreguesia(f.id, editandoFreguesia.nome)}
-                    className="flex-1 border rounded px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
-                  <button onClick={() => guardarFreguesia(f.id, editandoFreguesia.nome)}
-                    className="text-green-600 hover:text-green-800 text-sm">guardar</button>
-                  <button onClick={() => setEditandoFreguesia(null)}
-                    className="text-gray-400 hover:text-gray-600 text-sm">cancelar</button>
-                </div>
-              ) : (
-                <>
-                  <span className="text-sm">{f.nome}</span>
-                  <div className="flex gap-3">
-                    <button onClick={() => setEditandoFreguesia({id: f.id, nome: f.nome})}
-                      className="text-stone-500 hover:text-stone-700 text-xs">editar</button>
-                    <button onClick={() => apagarFreguesia(f.id, f.nome)}
-                      className="text-red-400 hover:text-red-600 text-xs">apagar</button>
-                  </div>
-                </>
-              )}
-            </li>
-          ))}
-        </ul>
+  return (
+    <div>
+      <h1 style={{fontSize:'22px',fontWeight:500,marginBottom:'1.5rem'}}>Configurações</h1>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'1.25rem',alignItems:'start'}}>
+        <Coluna
+          titulo="Lugares" count={lugares.length}
+          valor={novoLugar} setValor={setNovoLugar} onAdicionar={adicionarLugar}
+          items={lugares} editando={editandoLugar} setEditando={setEditandoLugar}
+          onGuardar={guardarLugar} onApagar={apagarLugar}
+        />
+        <Coluna
+          titulo="Freguesias" count={freguesias.length}
+          valor={novaFreguesia} setValor={setNovaFreguesia} onAdicionar={adicionarFreguesia}
+          items={freguesias} editando={editandoFreguesia} setEditando={setEditandoFreguesia}
+          onGuardar={guardarFreguesia} onApagar={apagarFreguesia}
+        />
       </div>
     </div>
   )

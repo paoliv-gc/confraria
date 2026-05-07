@@ -114,16 +114,24 @@ export default function Home() {
 
   const termo = pesquisa.toLowerCase().trim()
 
-  const familiasFiltradas = familias.filter(f => {
-    if (termo && !f.chefe_nome.toLowerCase().includes(termo)) return false
-    if (filtroLugares.length > 0 && !filtroLugares.includes(f.lugar?.id?.toString())) return false
-    if (filtroFreguesias.length > 0 && !filtroFreguesias.includes(f.freguesia?.id?.toString())) return false
-    if (filtroEstado === 'ativa' && !f.ativo) return false
-    if (filtroEstado === 'inativa' && f.ativo) return false
-    return true
-  })
+// Pesquisa por múltiplas palavras — "paulo jorge" encontra "paulo antonio jorge"
+function matchPesquisa(nome, pesquisa) {
+  if (!pesquisa.trim()) return true
+  const palavras = pesquisa.toLowerCase().trim().split(/\s+/)
+  const nomeLower = nome.toLowerCase()
+  return palavras.every(p => nomeLower.includes(p))
+}
 
-  const membrosFiltrados = termo ? membros.filter(m => m.nome.toLowerCase().includes(termo)) : []
+const familiasFiltradas = familias.filter(f => {
+  if (termo && !matchPesquisa(f.chefe_nome, termo)) return false
+  if (filtroLugares.length > 0 && !filtroLugares.includes(f.lugar?.id?.toString())) return false
+  if (filtroFreguesias.length > 0 && !filtroFreguesias.includes(f.freguesia?.id?.toString())) return false
+  if (filtroEstado === 'ativa' && !f.ativo) return false
+  if (filtroEstado === 'inativa' && f.ativo) return false
+  return true
+})
+
+  const membrosFiltrados = termo ? membros.filter(m => matchPesquisa(m.nome, termo)) : []
   const temFiltros = filtroLugares.length > 0 || filtroFreguesias.length > 0 || filtroEstado
 
   const lugaresOpts = lugares.map(l => ({ value: l.id.toString(), label: l.nome }))

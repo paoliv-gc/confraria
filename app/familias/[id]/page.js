@@ -6,9 +6,12 @@ import { supabase } from '../../../lib/supabase'
 import { getPerfil } from '../../../lib/auth'
 import Link from 'next/link'
 
+const card = { background: 'white', borderRadius: '10px', border: '1px solid #e5e7eb', padding: '1.25rem' }
+const label = { fontSize: '11px', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px', display: 'block' }
+const badge = (ativo) => ({ fontSize: '11px', padding: '3px 9px', borderRadius: '20px', fontWeight: 600, background: ativo ? '#ede9fe' : '#fee2e2', color: ativo ? '#5b21b6' : '#991b1b' })
+
 export default function DetalheFamily() {
   const { id } = useParams()
-
   const [familia, setFamilia] = useState(null)
   const [membros, setMembros] = useState([])
   const [historico, setHistorico] = useState([])
@@ -75,40 +78,24 @@ export default function DetalheFamily() {
       ativo: form.ativo,
       data_atualizacao: new Date().toISOString(),
     }).eq('id', id)
-
     if (notaHistorico) {
-      await supabase.from('historico_alteracoes').insert({
-        familia_id: parseInt(id),
-        tipo_alteracao: 'edicao',
-        descricao: notaHistorico,
-      })
+      await supabase.from('historico_alteracoes').insert({ familia_id: parseInt(id), tipo_alteracao: 'edicao', descricao: notaHistorico })
     }
-    setNotaHistorico('')
-    setEditando(false)
-    setGuardando(false)
+    setNotaHistorico(''); setEditando(false); setGuardando(false)
     carregarTudo()
   }
 
   async function adicionarMembro() {
     if (!novoMembro.trim()) return
     await supabase.from('familia_membros').insert({ familia_id: parseInt(id), nome: novoMembro.trim() })
-    await supabase.from('historico_alteracoes').insert({
-      familia_id: parseInt(id),
-      tipo_alteracao: 'membro_entrada',
-      descricao: `Adicionado membro: ${novoMembro.trim()}`,
-    })
-    setNovoMembro('')
-    carregarTudo()
+    await supabase.from('historico_alteracoes').insert({ familia_id: parseInt(id), tipo_alteracao: 'membro_entrada', descricao: `Adicionado membro: ${novoMembro.trim()}` })
+    setNovoMembro(''); carregarTudo()
   }
 
   async function removerMembro(membroId, nome) {
     if (!confirm(`Remover "${nome}"?`)) return
     await supabase.from('familia_membros').delete().eq('id', membroId)
-    await supabase.from('historico_alteracoes').insert({
-      familia_id: parseInt(id),
-      tipo_alteracao: 'membro_saida',
-      descricao: `Removido membro: ${nome}`,
-    })
+    await supabase.from('historico_alteracoes').insert({ familia_id: parseInt(id), tipo_alteracao: 'membro_saida', descricao: `Removido membro: ${nome}` })
     carregarTudo()
   }
 
@@ -116,176 +103,157 @@ export default function DetalheFamily() {
     if (!podeEditar) return
     setGuardandoCota(cota.id)
     const novoPago = !cota.pago
-    await supabase.from('cotas_pagamentos').update({
-      pago: novoPago,
-      data_pagamento: novoPago ? new Date().toISOString() : null,
-    }).eq('id', cota.id)
-    await supabase.from('historico_alteracoes').insert({
-      familia_id: parseInt(id),
-      tipo_alteracao: 'cota',
-      descricao: novoPago
-        ? `Cota ${cota.ano} marcada como paga (${parseFloat(cota.valor_total).toFixed(2)}€)`
-        : `Cota ${cota.ano} marcada como não paga`,
-    })
-    setGuardandoCota(null)
-    carregarTudo()
+    await supabase.from('cotas_pagamentos').update({ pago: novoPago, data_pagamento: novoPago ? new Date().toISOString() : null }).eq('id', cota.id)
+    await supabase.from('historico_alteracoes').insert({ familia_id: parseInt(id), tipo_alteracao: 'cota', descricao: novoPago ? `Cota ${cota.ano} paga (${parseFloat(cota.valor_total).toFixed(2)}€)` : `Cota ${cota.ano} marcada como não paga` })
+    setGuardandoCota(null); carregarTudo()
   }
 
-  if (loading) return <p className="text-gray-500">A carregar...</p>
-  if (!familia) return <p className="text-red-500">Família não encontrada.</p>
+  if (loading) return <p style={{color: '#9ca3af', fontSize: '13px', padding: '2rem'}}>A carregar...</p>
+  if (!familia) return <p style={{color: '#dc2626', fontSize: '13px', padding: '2rem'}}>Família não encontrada.</p>
 
   return (
-    <div className="space-y-6">
+    <div style={{maxWidth: '860px'}}>
+
       {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
-        <div>
-          <Link href="/" className="text-sm text-stone-500 hover:text-stone-700">← Voltar</Link>
-          <h1 className="text-2xl font-bold text-stone-800 mt-1">{familia.chefe_nome}</h1>
-          <p className="text-sm text-gray-500">
-            {familia.lugar?.nome || '—'} · {familia.freguesia?.nome || '—'}
-            <span className={`ml-3 text-xs px-2 py-0.5 rounded-full ${familia.ativo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
-              {familia.ativo ? 'Ativa' : 'Inativa'}
-            </span>
-          </p>
+      <div style={{marginBottom: '1.5rem'}}>
+        <Link href="/" style={{fontSize: '13px', color: '#6366f1', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', marginBottom: '0.75rem'}}>← Voltar</Link>
+        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+          <div>
+            <h1 style={{fontSize: '22px', fontWeight: 500, color: '#111', marginBottom: '4px'}}>{familia.chefe_nome}</h1>
+            <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#6b7280'}}>
+              <span>{familia.lugar?.nome || '—'}</span>
+              <span>·</span>
+              <span>{familia.freguesia?.nome || '—'}</span>
+              <span style={badge(familia.ativo)}>{familia.ativo ? 'Ativa' : 'Inativa'}</span>
+            </div>
+          </div>
+          {podeEditar && (
+            <button onClick={() => setEditando(!editando)} style={{
+              padding: '0.45rem 1rem', fontSize: '13px', fontWeight: 500,
+              border: '1px solid #e5e7eb', borderRadius: '8px',
+              background: editando ? '#fef2f2' : 'white',
+              color: editando ? '#dc2626' : '#374151', cursor: 'pointer'
+            }}>{editando ? 'Cancelar' : 'Editar'}</button>
+          )}
         </div>
-        {podeEditar && (
-          <button onClick={() => setEditando(!editando)}
-            className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700 text-sm">
-            {editando ? 'Cancelar' : 'Editar'}
-          </button>
-        )}
       </div>
 
-      {/* Formulário edição */}
+      {/* Edição ou visualização */}
       {podeEditar && editando ? (
-        <div className="bg-white rounded shadow p-6 space-y-4">
-          <h2 className="font-semibold text-stone-700">Editar Família</h2>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-1">Chefe de Família</label>
-              <input value={form.chefe_nome} onChange={e => setForm({...form, chefe_nome: e.target.value})}
-                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
+        <div style={{...card, marginBottom: '1rem'}}>
+          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
+            <div style={{gridColumn: '1 / -1'}}>
+              <span style={label}>Chefe de Família</span>
+              <input value={form.chefe_nome} onChange={e => setForm({...form, chefe_nome: e.target.value})} style={{width: '100%'}} />
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Lugar</label>
-              <select value={form.lugar_id} onChange={e => setForm({...form, lugar_id: e.target.value})}
-                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400">
+              <span style={label}>Lugar</span>
+              <select value={form.lugar_id} onChange={e => setForm({...form, lugar_id: e.target.value})} style={{width: '100%'}}>
                 <option value="">— sem lugar —</option>
                 {lugares.map(l => <option key={l.id} value={l.id}>{l.nome}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs text-gray-500 mb-1">Freguesia</label>
-              <select value={form.freguesia_id} onChange={e => setForm({...form, freguesia_id: e.target.value})}
-                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400">
+              <span style={label}>Freguesia</span>
+              <select value={form.freguesia_id} onChange={e => setForm({...form, freguesia_id: e.target.value})} style={{width: '100%'}}>
                 <option value="">— sem freguesia —</option>
                 {freguesias.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
               </select>
             </div>
-            <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-1">Morada</label>
-              <input value={form.morada} onChange={e => setForm({...form, morada: e.target.value})}
-                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
+            <div style={{gridColumn: '1 / -1'}}>
+              <span style={label}>Morada</span>
+              <input value={form.morada} onChange={e => setForm({...form, morada: e.target.value})} style={{width: '100%'}} />
             </div>
-            <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-1">Observações</label>
-              <textarea value={form.observacoes} onChange={e => setForm({...form, observacoes: e.target.value})}
-                rows={3} className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
+            <div style={{gridColumn: '1 / -1'}}>
+              <span style={label}>Observações</span>
+              <textarea value={form.observacoes} onChange={e => setForm({...form, observacoes: e.target.value})} rows={3} style={{width: '100%', resize: 'vertical'}} />
             </div>
-            <div className="col-span-2 flex items-center gap-2">
-              <input type="checkbox" id="ativo" checked={form.ativo} onChange={e => setForm({...form, ativo: e.target.checked})} />
-              <label htmlFor="ativo" className="text-sm text-gray-700">Família ativa</label>
+            <div style={{gridColumn: '1 / -1', display: 'flex', alignItems: 'center', gap: '8px'}}>
+              <input type="checkbox" id="ativo" checked={form.ativo} onChange={e => setForm({...form, ativo: e.target.checked})} style={{width: 'auto', padding: 0}} />
+              <label htmlFor="ativo" style={{fontSize: '13px', color: '#374151', cursor: 'pointer'}}>Família ativa</label>
             </div>
-            <div className="col-span-2">
-              <label className="block text-xs text-gray-500 mb-1">Nota para o histórico (opcional)</label>
-              <input value={notaHistorico} onChange={e => setNotaHistorico(e.target.value)}
-                placeholder="ex: Mudança de chefe de família após falecimento"
-                className="w-full border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
+            <div style={{gridColumn: '1 / -1'}}>
+              <span style={label}>Nota para o histórico (opcional)</span>
+              <input value={notaHistorico} onChange={e => setNotaHistorico(e.target.value)} placeholder="ex: Mudança de chefe após falecimento" style={{width: '100%'}} />
             </div>
           </div>
-          <button onClick={guardarEdicao} disabled={guardando}
-            className="bg-stone-800 text-white px-6 py-2 rounded hover:bg-stone-700 text-sm disabled:opacity-50">
-            {guardando ? 'A guardar...' : 'Guardar alterações'}
-          </button>
+          <button onClick={guardarEdicao} disabled={guardando} style={{
+            padding: '0.5rem 1.25rem', fontSize: '13px', fontWeight: 500,
+            background: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px',
+            cursor: 'pointer', opacity: guardando ? 0.6 : 1
+          }}>{guardando ? 'A guardar...' : 'Guardar alterações'}</button>
         </div>
       ) : (
-        <div className="bg-white rounded shadow p-6 grid grid-cols-2 gap-4 text-sm">
-          <div><span className="text-gray-400 text-xs">Morada</span><p>{familia.morada || '—'}</p></div>
-          <div><span className="text-gray-400 text-xs">Observações</span><p className="whitespace-pre-wrap">{familia.observacoes || '—'}</p></div>
+        <div style={{...card, marginBottom: '1rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+          <div>
+            <span style={label}>Morada</span>
+            <p style={{fontSize: '13px', color: '#374151'}}>{familia.morada || '—'}</p>
+          </div>
+          <div>
+            <span style={label}>Observações</span>
+            <p style={{fontSize: '13px', color: '#374151', whiteSpace: 'pre-wrap'}}>{familia.observacoes || '—'}</p>
+          </div>
         </div>
       )}
 
       {/* Agregado Familiar */}
-      <div className="bg-white rounded shadow p-6">
-        <h2 className="font-semibold text-stone-700 mb-4">Agregado Familiar</h2>
-        <ul className="space-y-2 mb-4">
-          {membros.length === 0 && <li className="text-gray-400 text-sm">Sem membros registados.</li>}
+      <div style={{...card, marginBottom: '1rem'}}>
+        <h2 style={{fontSize: '15px', fontWeight: 500, color: '#111', marginBottom: '1rem'}}>Agregado Familiar</h2>
+        {membros.length === 0 && <p style={{fontSize: '13px', color: '#9ca3af'}}>Sem membros registados.</p>}
+        <div style={{marginBottom: podeEditar ? '1rem' : 0}}>
           {membros.map(m => (
-            <li key={m.id} className="flex items-center justify-between text-sm border-b border-gray-50 pb-2">
-              <span>{m.nome}</span>
+            <div key={m.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid #f9fafb'}}>
+              <span style={{fontSize: '13px', color: '#374151'}}>{m.nome}</span>
               {podeEditar && (
-                <button onClick={() => removerMembro(m.id, m.nome)}
-                  className="text-red-400 hover:text-red-600 text-xs">remover</button>
+                <button onClick={() => removerMembro(m.id, m.nome)} style={{fontSize: '12px', color: '#dc2626', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 6px'}}>remover</button>
               )}
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
         {podeEditar && (
-          <div className="flex gap-2">
-            <input value={novoMembro} onChange={e => setNovoMembro(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && adicionarMembro()}
-              placeholder="Nome do novo membro..."
-              className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
-            <button onClick={adicionarMembro}
-              className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700 text-sm">
-              Adicionar
-            </button>
+          <div style={{display: 'flex', gap: '8px', marginTop: '0.5rem'}}>
+            <input value={novoMembro} onChange={e => setNovoMembro(e.target.value)} onKeyDown={e => e.key === 'Enter' && adicionarMembro()} placeholder="Nome do novo membro..." style={{flex: 1}} />
+            <button onClick={adicionarMembro} style={{padding: '0.5rem 1rem', fontSize: '13px', fontWeight: 500, background: '#4f46e5', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer'}}>Adicionar</button>
           </div>
         )}
       </div>
 
       {/* Cotas */}
-      <div className="bg-white rounded shadow p-6">
-        <h2 className="font-semibold text-stone-700 mb-4">Cotas</h2>
+      <div style={{...card, marginBottom: '1rem'}}>
+        <h2 style={{fontSize: '15px', fontWeight: 500, color: '#111', marginBottom: '1rem'}}>Cotas</h2>
         {cotas.length === 0 ? (
-          <p className="text-gray-400 text-sm">Sem cotas registadas.</p>
+          <p style={{fontSize: '13px', color: '#9ca3af'}}>Sem cotas registadas.</p>
         ) : (
-          <table className="w-full text-sm">
+          <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '13px'}}>
             <thead>
-              <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
-                <th className="text-left py-2">Ano</th>
-                <th className="text-center py-2">Membros</th>
-                <th className="text-center py-2">Valor</th>
-                <th className="text-center py-2">Estado</th>
-                <th className="text-center py-2">Data pagamento</th>
-                {podeEditar && <th className="text-center py-2">Acção</th>}
+              <tr style={{borderBottom: '1px solid #f3f4f6'}}>
+                {['Ano', 'Membros', 'Valor', 'Estado', 'Data pagamento', podeEditar ? 'Acção' : ''].filter(Boolean).map(h => (
+                  <th key={h} style={{textAlign: h === 'Ano' ? 'left' : 'center', padding: '0.4rem 0.5rem', fontSize: '11px', color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em'}}>{h}</th>
+                ))}
               </tr>
             </thead>
             <tbody>
               {cotas.map(c => (
-                <tr key={c.id} className="border-b border-gray-50">
-                  <td className="py-2 font-medium">{c.ano}</td>
-                  <td className="py-2 text-center text-gray-600">{c.num_membros}</td>
-                  <td className="py-2 text-center font-medium">{parseFloat(c.valor_total).toFixed(2)}€</td>
-                  <td className="py-2 text-center">
-                    <span className={`text-xs px-2 py-1 rounded-full ${c.pago ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                <tr key={c.id} style={{borderBottom: '1px solid #f9fafb'}}>
+                  <td style={{padding: '0.6rem 0.5rem', fontWeight: 500}}>{c.ano}</td>
+                  <td style={{padding: '0.6rem 0.5rem', textAlign: 'center', color: '#6b7280'}}>{c.num_membros}</td>
+                  <td style={{padding: '0.6rem 0.5rem', textAlign: 'center', fontWeight: 500}}>{parseFloat(c.valor_total).toFixed(2)}€</td>
+                  <td style={{padding: '0.6rem 0.5rem', textAlign: 'center'}}>
+                    <span style={{fontSize: '11px', padding: '3px 9px', borderRadius: '20px', fontWeight: 600, background: c.pago ? '#d1fae5' : '#fee2e2', color: c.pago ? '#065f46' : '#991b1b'}}>
                       {c.pago ? 'Pago' : 'Por pagar'}
                     </span>
                   </td>
-                  <td className="py-2 text-center text-gray-400 text-xs">
+                  <td style={{padding: '0.6rem 0.5rem', textAlign: 'center', color: '#9ca3af', fontSize: '12px'}}>
                     {c.data_pagamento ? new Date(c.data_pagamento).toLocaleDateString('pt-PT') : '—'}
                   </td>
                   {podeEditar && (
-                    <td className="py-2 text-center">
-                      <button
-                        onClick={() => toggleCota(c)}
-                        disabled={guardandoCota === c.id}
-                        className={`text-xs px-3 py-1 rounded border ${c.pago
-                          ? 'border-red-300 text-red-500 hover:bg-red-50'
-                          : 'border-green-400 text-green-600 hover:bg-green-50'
-                        } disabled:opacity-50`}>
-                        {guardandoCota === c.id ? '...' : c.pago ? 'Anular' : 'Marcar pago'}
-                      </button>
+                    <td style={{padding: '0.6rem 0.5rem', textAlign: 'center'}}>
+                      <button onClick={() => toggleCota(c)} disabled={guardandoCota === c.id} style={{
+                        fontSize: '12px', padding: '3px 10px', borderRadius: '6px', cursor: 'pointer',
+                        border: c.pago ? '1px solid #fca5a5' : '1px solid #a5b4fc',
+                        color: c.pago ? '#dc2626' : '#4f46e5', background: 'white',
+                        opacity: guardandoCota === c.id ? 0.5 : 1
+                      }}>{guardandoCota === c.id ? '...' : c.pago ? 'Anular' : 'Marcar pago'}</button>
                     </td>
                   )}
                 </tr>
@@ -296,20 +264,19 @@ export default function DetalheFamily() {
       </div>
 
       {/* Histórico */}
-      <div className="bg-white rounded shadow p-6">
-        <h2 className="font-semibold text-stone-700 mb-4">Histórico</h2>
+      <div style={card}>
+        <h2 style={{fontSize: '15px', fontWeight: 500, color: '#111', marginBottom: '1rem'}}>Histórico</h2>
         {historico.length === 0 ? (
-          <p className="text-gray-400 text-sm">Sem alterações registadas.</p>
+          <p style={{fontSize: '13px', color: '#9ca3af'}}>Sem alterações registadas.</p>
         ) : (
-          <ul className="space-y-3">
+          <div>
             {historico.map(h => (
-              <li key={h.id} className="text-sm border-l-2 border-stone-200 pl-3">
-                <span className="text-xs text-gray-400">{new Date(h.data_alteracao).toLocaleString('pt-PT')}</span>
-                <p className="text-gray-700">{h.descricao}</p>
-                <span className="text-xs text-stone-400">{h.tipo_alteracao}</span>
-              </li>
+              <div key={h.id} style={{borderLeft: '2px solid #e0e7ff', paddingLeft: '0.75rem', marginBottom: '0.75rem'}}>
+                <div style={{fontSize: '11px', color: '#9ca3af', marginBottom: '2px'}}>{new Date(h.data_alteracao).toLocaleString('pt-PT')} · <span style={{color: '#a5b4fc'}}>{h.tipo_alteracao}</span></div>
+                <div style={{fontSize: '13px', color: '#374151'}}>{h.descricao}</div>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>
