@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { getPerfil } from '../lib/auth'
 import Link from 'next/link'
 
 export default function Home() {
@@ -14,11 +15,20 @@ export default function Home() {
   const [filtroFreguesia, setFiltroFreguesia] = useState('')
   const [filtroEstado, setFiltroEstado] = useState('')
   const [loading, setLoading] = useState(true)
+  const [perfil, setPerfil] = useState(null)
 
-  useEffect(() => { carregarTudo() }, [])
+  const podeEditar = perfil?.papel === 'completo'
+
+  useEffect(() => {
+    async function init() {
+      const p = await getPerfil()
+      setPerfil(p)
+      await carregarTudo()
+    }
+    init()
+  }, [])
 
   async function carregarTudo() {
-    setLoading(true)
     const [famRes, memRes, lugRes, freqRes] = await Promise.all([
       supabase.from('familias').select(`id, chefe_nome, ativo, lugar:lugar_id(id,nome), freguesia:freguesia_id(id,nome), familia_membros(id)`).order('chefe_nome'),
       supabase.from('familia_membros').select('id, nome, familia_id, familias(id, chefe_nome)').order('nome'),
@@ -59,13 +69,14 @@ export default function Home() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-stone-800">Famílias</h1>
-        <Link href="/familias/nova"
-          className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700 text-sm">
-          + Nova Família
-        </Link>
+        {podeEditar && (
+          <Link href="/familias/nova"
+            className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700 text-sm">
+            + Nova Família
+          </Link>
+        )}
       </div>
 
-      {/* Pesquisa */}
       <input
         type="text"
         placeholder="Pesquisar por nome do chefe ou membro..."
@@ -74,7 +85,6 @@ export default function Home() {
         className="w-full border border-gray-300 rounded px-4 py-2 mb-3 focus:outline-none focus:ring-2 focus:ring-stone-400"
       />
 
-      {/* Filtros */}
       <div className="flex gap-3 mb-6 flex-wrap">
         <select value={filtroFreguesia} onChange={e => setFiltroFreguesia(e.target.value)}
           className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400">
@@ -107,7 +117,6 @@ export default function Home() {
         <p className="text-gray-500">A carregar...</p>
       ) : (
         <>
-          {/* Resultados de membros */}
           {termo && membrosFiltrados.length > 0 && (
             <div className="bg-amber-50 border border-amber-200 rounded shadow mb-6 overflow-hidden">
               <div className="px-4 py-2 bg-amber-100 text-amber-800 text-xs font-semibold uppercase">
@@ -127,7 +136,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Tabela de famílias */}
           <div className="bg-white rounded shadow overflow-hidden">
             <table className="w-full text-sm">
               <thead className="bg-stone-100 text-stone-600 uppercase text-xs">

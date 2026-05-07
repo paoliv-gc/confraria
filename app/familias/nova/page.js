@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
+import { getPerfil } from '../../../lib/auth'
 import Link from 'next/link'
 
 export default function NovaFamilia() {
@@ -10,6 +11,7 @@ export default function NovaFamilia() {
   const [lugares, setLugares] = useState([])
   const [freguesias, setFreguesias] = useState([])
   const [guardando, setGuardando] = useState(false)
+  const [autorizado, setAutorizado] = useState(false)
   const [form, setForm] = useState({
     chefe_nome: '',
     lugar_id: '',
@@ -20,7 +22,13 @@ export default function NovaFamilia() {
   const [membros, setMembros] = useState([''])
 
   useEffect(() => {
-    async function carregar() {
+    async function init() {
+      const p = await getPerfil()
+      if (!p || p.papel !== 'completo') {
+        router.push('/')
+        return
+      }
+      setAutorizado(true)
       const [lugRes, freqRes] = await Promise.all([
         supabase.from('lugares').select('id, nome').order('nome'),
         supabase.from('freguesias').select('id, nome').order('nome'),
@@ -28,7 +36,7 @@ export default function NovaFamilia() {
       setLugares(lugRes.data || [])
       setFreguesias(freqRes.data || [])
     }
-    carregar()
+    init()
   }, [])
 
   function atualizarMembro(index, valor) {
@@ -78,6 +86,8 @@ export default function NovaFamilia() {
 
     router.push(`/familias/${data.id}`)
   }
+
+  if (!autorizado) return null
 
   return (
     <div className="max-w-2xl space-y-6">

@@ -1,13 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import { supabase } from '../../../lib/supabase'
+import { getPerfil } from '../../../lib/auth'
 import Link from 'next/link'
 
 export default function DetalheFamily() {
   const { id } = useParams()
-  const router = useRouter()
 
   const [familia, setFamilia] = useState(null)
   const [membros, setMembros] = useState([])
@@ -20,9 +20,17 @@ export default function DetalheFamily() {
   const [novoMembro, setNovoMembro] = useState('')
   const [notaHistorico, setNotaHistorico] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [perfil, setPerfil] = useState(null)
+
+  const podeEditar = perfil?.papel === 'completo'
 
   useEffect(() => {
-    carregarTudo()
+    async function init() {
+      const p = await getPerfil()
+      setPerfil(p)
+      await carregarTudo()
+    }
+    init()
   }, [id])
 
   async function carregarTudo() {
@@ -54,7 +62,7 @@ export default function DetalheFamily() {
 
   async function guardarEdicao() {
     setGuardando(true)
-    const { error } = await supabase.from('familias').update({
+    await supabase.from('familias').update({
       chefe_nome: form.chefe_nome,
       lugar_id: form.lugar_id || null,
       freguesia_id: form.freguesia_id || null,
@@ -64,7 +72,7 @@ export default function DetalheFamily() {
       data_atualizacao: new Date().toISOString(),
     }).eq('id', id)
 
-    if (!error && notaHistorico) {
+    if (notaHistorico) {
       await supabase.from('historico_alteracoes').insert({
         familia_id: parseInt(id),
         tipo_alteracao: 'edicao',
@@ -105,7 +113,6 @@ export default function DetalheFamily() {
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div>
           <Link href="/" className="text-sm text-stone-500 hover:text-stone-700">← Voltar</Link>
@@ -117,14 +124,15 @@ export default function DetalheFamily() {
             </span>
           </p>
         </div>
-        <button onClick={() => setEditando(!editando)}
-          className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700 text-sm">
-          {editando ? 'Cancelar' : 'Editar'}
-        </button>
+        {podeEditar && (
+          <button onClick={() => setEditando(!editando)}
+            className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700 text-sm">
+            {editando ? 'Cancelar' : 'Editar'}
+          </button>
+        )}
       </div>
 
-      {/* Formulário de edição */}
-      {editando ? (
+      {podeEditar && editando ? (
         <div className="bg-white rounded shadow p-6 space-y-4">
           <h2 className="font-semibold text-stone-700">Editar Família</h2>
           <div className="grid grid-cols-2 gap-4">
@@ -182,7 +190,6 @@ export default function DetalheFamily() {
         </div>
       )}
 
-      {/* Membros */}
       <div className="bg-white rounded shadow p-6">
         <h2 className="font-semibold text-stone-700 mb-4">Agregado Familiar</h2>
         <ul className="space-y-2 mb-4">
@@ -190,24 +197,27 @@ export default function DetalheFamily() {
           {membros.map(m => (
             <li key={m.id} className="flex items-center justify-between text-sm border-b border-gray-50 pb-2">
               <span>{m.nome}</span>
-              <button onClick={() => removerMembro(m.id, m.nome)}
-                className="text-red-400 hover:text-red-600 text-xs">remover</button>
+              {podeEditar && (
+                <button onClick={() => removerMembro(m.id, m.nome)}
+                  className="text-red-400 hover:text-red-600 text-xs">remover</button>
+              )}
             </li>
           ))}
         </ul>
-        <div className="flex gap-2">
-          <input value={novoMembro} onChange={e => setNovoMembro(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && adicionarMembro()}
-            placeholder="Nome do novo membro..."
-            className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
-          <button onClick={adicionarMembro}
-            className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700 text-sm">
-            Adicionar
-          </button>
-        </div>
+        {podeEditar && (
+          <div className="flex gap-2">
+            <input value={novoMembro} onChange={e => setNovoMembro(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && adicionarMembro()}
+              placeholder="Nome do novo membro..."
+              className="flex-1 border rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-stone-400" />
+            <button onClick={adicionarMembro}
+              className="bg-stone-800 text-white px-4 py-2 rounded hover:bg-stone-700 text-sm">
+              Adicionar
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* Histórico */}
       <div className="bg-white rounded shadow p-6">
         <h2 className="font-semibold text-stone-700 mb-4">Histórico</h2>
         {historico.length === 0 ? (
