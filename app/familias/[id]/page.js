@@ -14,12 +14,14 @@ export default function DetalheFamily() {
   const [historico, setHistorico] = useState([])
   const [lugares, setLugares] = useState([])
   const [freguesias, setFreguesias] = useState([])
+  const [cotas, setCotas] = useState([])
   const [loading, setLoading] = useState(true)
   const [editando, setEditando] = useState(false)
   const [form, setForm] = useState({})
   const [novoMembro, setNovoMembro] = useState('')
   const [notaHistorico, setNotaHistorico] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [guardandoCota, setGuardandoCota] = useState(null)
   const [perfil, setPerfil] = useState(null)
 
   const podeEditar = perfil?.papel === 'completo'
@@ -35,12 +37,13 @@ export default function DetalheFamily() {
 
   async function carregarTudo() {
     setLoading(true)
-    const [famRes, membRes, histRes, lugRes, freqRes] = await Promise.all([
+    const [famRes, membRes, histRes, lugRes, freqRes, cotasRes] = await Promise.all([
       supabase.from('familias').select(`id, chefe_nome, ativo, observacoes, morada, lugar:lugar_id(id,nome), freguesia:freguesia_id(id,nome)`).eq('id', id).single(),
       supabase.from('familia_membros').select('*').eq('familia_id', id).order('id'),
       supabase.from('historico_alteracoes').select('*').eq('familia_id', id).order('data_alteracao', { ascending: false }),
       supabase.from('lugares').select('id, nome').order('nome'),
       supabase.from('freguesias').select('id, nome').order('nome'),
+      supabase.from('cotas_pagamentos').select('*').eq('familia_id', id).order('ano', { ascending: false }),
     ])
     if (famRes.data) {
       setFamilia(famRes.data)
@@ -57,6 +60,7 @@ export default function DetalheFamily() {
     setHistorico(histRes.data || [])
     setLugares(lugRes.data || [])
     setFreguesias(freqRes.data || [])
+    setCotas(cotasRes.data || [])
     setLoading(false)
   }
 
@@ -108,11 +112,31 @@ export default function DetalheFamily() {
     carregarTudo()
   }
 
+  async function toggleCota(cota) {
+    if (!podeEditar) return
+    setGuardandoCota(cota.id)
+    const novoPago = !cota.pago
+    await supabase.from('cotas_pagamentos').update({
+      pago: novoPago,
+      data_pagamento: novoPago ? new Date().toISOString() : null,
+    }).eq('id', cota.id)
+    await supabase.from('historico_alteracoes').insert({
+      familia_id: parseInt(id),
+      tipo_alteracao: 'cota',
+      descricao: novoPago
+        ? `Cota ${cota.ano} marcada como paga (${parseFloat(cota.valor_total).toFixed(2)}€)`
+        : `Cota ${cota.ano} marcada como não paga`,
+    })
+    setGuardandoCota(null)
+    carregarTudo()
+  }
+
   if (loading) return <p className="text-gray-500">A carregar...</p>
   if (!familia) return <p className="text-red-500">Família não encontrada.</p>
 
   return (
     <div className="space-y-6">
+      {/* Cabeçalho */}
       <div className="flex items-center justify-between">
         <div>
           <Link href="/" className="text-sm text-stone-500 hover:text-stone-700">← Voltar</Link>
@@ -132,6 +156,7 @@ export default function DetalheFamily() {
         )}
       </div>
 
+      {/* Formulário edição */}
       {podeEditar && editando ? (
         <div className="bg-white rounded shadow p-6 space-y-4">
           <h2 className="font-semibold text-stone-700">Editar Família</h2>
@@ -190,6 +215,7 @@ export default function DetalheFamily() {
         </div>
       )}
 
+      {/* Agregado Familiar */}
       <div className="bg-white rounded shadow p-6">
         <h2 className="font-semibold text-stone-700 mb-4">Agregado Familiar</h2>
         <ul className="space-y-2 mb-4">
@@ -218,6 +244,58 @@ export default function DetalheFamily() {
         )}
       </div>
 
+      {/* Cotas */}
+      <div className="bg-white rounded shadow p-6">
+        <h2 className="font-semibold text-stone-700 mb-4">Cotas</h2>
+        {cotas.length === 0 ? (
+          <p className="text-gray-400 text-sm">Sem cotas registadas.</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs text-gray-400 uppercase border-b border-gray-100">
+                <th className="text-left py-2">Ano</th>
+                <th className="text-center py-2">Membros</th>
+                <th className="text-center py-2">Valor</th>
+                <th className="text-center py-2">Estado</th>
+                <th className="text-center py-2">Data pagamento</th>
+                {podeEditar && <th className="text-center py-2">Acção</th>}
+              </tr>
+            </thead>
+            <tbody>
+              {cotas.map(c => (
+                <tr key={c.id} className="border-b border-gray-50">
+                  <td className="py-2 font-medium">{c.ano}</td>
+                  <td className="py-2 text-center text-gray-600">{c.num_membros}</td>
+                  <td className="py-2 text-center font-medium">{parseFloat(c.valor_total).toFixed(2)}€</td>
+                  <td className="py-2 text-center">
+                    <span className={`text-xs px-2 py-1 rounded-full ${c.pago ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}`}>
+                      {c.pago ? 'Pago' : 'Por pagar'}
+                    </span>
+                  </td>
+                  <td className="py-2 text-center text-gray-400 text-xs">
+                    {c.data_pagamento ? new Date(c.data_pagamento).toLocaleDateString('pt-PT') : '—'}
+                  </td>
+                  {podeEditar && (
+                    <td className="py-2 text-center">
+                      <button
+                        onClick={() => toggleCota(c)}
+                        disabled={guardandoCota === c.id}
+                        className={`text-xs px-3 py-1 rounded border ${c.pago
+                          ? 'border-red-300 text-red-500 hover:bg-red-50'
+                          : 'border-green-400 text-green-600 hover:bg-green-50'
+                        } disabled:opacity-50`}>
+                        {guardandoCota === c.id ? '...' : c.pago ? 'Anular' : 'Marcar pago'}
+                      </button>
+                    </td>
+                  )}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {/* Histórico */}
       <div className="bg-white rounded shadow p-6">
         <h2 className="font-semibold text-stone-700 mb-4">Histórico</h2>
         {historico.length === 0 ? (

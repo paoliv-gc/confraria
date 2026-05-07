@@ -13,25 +13,28 @@ export default function RootLayout({ children }) {
 
   return (
     <html lang="pt">
-      <body className="bg-stone-50 text-stone-900 min-h-screen">
+      <body className="min-h-screen" style={{background: '#f8fafc', color: '#111'}}>
         {isLogin ? children : (
           <AuthGuard setPerfil={setPerfil}>
-            <nav className="bg-stone-800 text-white px-6 py-4 flex items-center gap-6">
-              <span className="font-bold text-lg tracking-wide">⚜ Confraria</span>
-              <a href="/" className="text-stone-300 hover:text-white text-sm">Famílias</a>
+            <nav style={{background: 'white', borderBottom: '1px solid #e5e7eb', height: '48px', display: 'flex', alignItems: 'center', padding: '0 1.5rem', gap: '1.5rem', position: 'sticky', top: 0, zIndex: 50}}>
+              <div style={{display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px', fontWeight: 600, color: '#111'}}>
+                <div style={{width: '9px', height: '9px', borderRadius: '50%', background: '#4f46e5'}}></div>
+                Confraria
+              </div>
+              <a href="/" style={{fontSize: '13px', color: pathname === '/' ? '#4f46e5' : '#9ca3af', textDecoration: 'none', borderBottom: pathname === '/' ? '2px solid #4f46e5' : 'none', paddingBottom: pathname === '/' ? '2px' : '0'}}>Famílias</a>
+              <a href="/cotas" style={{fontSize: '13px', color: pathname === '/cotas' ? '#4f46e5' : '#9ca3af', textDecoration: 'none', borderBottom: pathname === '/cotas' ? '2px solid #4f46e5' : 'none', paddingBottom: pathname === '/cotas' ? '2px' : '0'}}>Cotas</a>
               {perfil?.papel === 'completo' && (
                 <>
-                  <a href="/familias/nova" className="text-stone-300 hover:text-white text-sm">+ Nova Família</a>
-                  <a href="/configuracoes" className="text-stone-300 hover:text-white text-sm">Configurações</a>
-                  <a href="/cotas" className="text-stone-300 hover:text-white text-sm">Cotas</a>
-				</>
+                  <a href="/familias/nova" style={{fontSize: '13px', color: pathname === '/familias/nova' ? '#4f46e5' : '#9ca3af', textDecoration: 'none'}}>+ Nova Família</a>
+                  <a href="/configuracoes" style={{fontSize: '13px', color: pathname === '/configuracoes' ? '#4f46e5' : '#9ca3af', textDecoration: 'none'}}>Configurações</a>
+                </>
               )}
-              <div className="ml-auto flex items-center gap-4">
-                <span className="text-stone-400 text-xs">{perfil?.user?.email}</span>
-                <button onClick={logout} className="text-stone-300 hover:text-white text-xs">Sair</button>
+              <div style={{marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem'}}>
+                <span style={{fontSize: '12px', color: '#9ca3af'}}>{perfil?.user?.email}</span>
+                <button onClick={logout} style={{fontSize: '12px', color: '#9ca3af', background: 'none', border: 'none', cursor: 'pointer'}}>Sair</button>
               </div>
             </nav>
-            <main className="max-w-5xl mx-auto px-4 py-8">
+            <main style={{maxWidth: '1100px', margin: '0 auto', padding: '2rem 1.5rem'}}>
               {children}
             </main>
           </AuthGuard>
