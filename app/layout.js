@@ -27,7 +27,8 @@ export default function RootLayout({ children }) {
                 <>
                   <a href="/familias/nova" style={{fontSize: '13px', color: pathname === '/familias/nova' ? '#4f46e5' : '#9ca3af', textDecoration: 'none'}}>+ Nova Família</a>
                   <a href="/configuracoes" style={{fontSize: '13px', color: pathname === '/configuracoes' ? '#4f46e5' : '#9ca3af', textDecoration: 'none'}}>Configurações</a>
-                </>
+				  <a href="/relatorios" style={{fontSize: '13px', color: pathname === '/relatorios' ? '#4f46e5' : '#9ca3af', textDecoration: 'none', borderBottom: pathname === '/relatorios' ? '2px solid #4f46e5' : 'none', paddingBottom: pathname === '/relatorios' ? '2px' : '0'}}>Relatórios</a>
+				</>
               )}
               <div style={{marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '1rem'}}>
                 <span style={{fontSize: '12px', color: '#9ca3af'}}>{perfil?.user?.email}</span>
