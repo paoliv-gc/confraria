@@ -83,7 +83,7 @@ export default function Home() {
   const [pesquisa, setPesquisa] = useState('')
   const [filtroLugares, setFiltroLugares] = useState([])
   const [filtroFreguesias, setFiltroFreguesias] = useState([])
-  const [filtroEstado, setFiltroEstado] = useState('ativa')
+  const [filtroEstado, setFiltroEstado] = useState('Ativas')
   const [loading, setLoading] = useState(true)
   const [perfil, setPerfil] = useState(null)
 
