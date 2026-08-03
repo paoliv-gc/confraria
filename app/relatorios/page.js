@@ -201,7 +201,7 @@ export default function Relatorios() {
     const css = `
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: Arial, Helvetica, sans-serif; background: white; }
-      @page { size: 210mm 148mm; margin: 5mm; }
+      @page { size: 210mm 148mm; margin: 4mm; }
       .recibo { width: 100%; height: 136mm; page-break-after: always; background: white; border: 1px solid #1a5c35; display: flex; flex-direction: column; overflow: hidden; }
       .recibo:last-child { page-break-after: avoid; }
       .header { display: flex; border-bottom: 1.5px solid #1a5c35; flex-shrink: 0; height: 26mm; }
