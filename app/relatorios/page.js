@@ -45,12 +45,20 @@ function MultiSelect({ label, options, selected, onChange }) {
   )
 }
 
+function titlePt(s) {
+  const particles = new Set(['de','da','do','das','dos','e','a','o','em','com','por'])
+  return s.split(' ').map((w, i) =>
+    (i === 0 || !particles.has(w.toLowerCase()))
+      ? w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+      : w.toLowerCase()
+  ).join(' ')
+}
+
 export default function Relatorios() {
   const [familias, setFamilias] = useState([])
   const [lugares, setLugares] = useState([])
   const [freguesias, setFreguesias] = useState([])
   const [loading, setLoading] = useState(true)
-  const [perfil, setPerfil] = useState(null)
 
   // Filtros listagem
   const [filtroFreguesias, setFiltroFreguesias] = useState([])
@@ -66,7 +74,6 @@ export default function Relatorios() {
 
   useEffect(() => {
     async function init() {
-      const p = await getPerfil(); setPerfil(p)
       const [famRes, lugRes, freqRes] = await Promise.all([
         supabase.from('familias').select(`
           id, chefe_nome, ativo, morada, observacoes,
@@ -85,7 +92,7 @@ export default function Relatorios() {
     init()
   }, [])
 
-  // Filtrar famílias para listagem
+  // Filtrar famílias listagem
   const familiasFiltradas = familias.filter(f => {
     if (filtroEstado === 'ativa' && !f.ativo) return false
     if (filtroEstado === 'inativa' && f.ativo) return false
@@ -94,7 +101,7 @@ export default function Relatorios() {
     return true
   })
 
-  // Filtrar famílias para recibos
+  // Filtrar famílias recibos
   const familiasRecibos = familias.filter(f => {
     if (!f.ativo) return false
     if (filtroFreguesiasRec.length > 0 && !filtroFreguesiasRec.includes(f.freguesia?.id?.toString())) return false
@@ -102,7 +109,7 @@ export default function Relatorios() {
     return true
   })
 
-  // Agrupar por lugar+freguesia
+  // Agrupar por freguesia/lugar
   function agrupar(lista) {
     const porFreguesia = {}
     for (const f of lista) {
@@ -134,14 +141,14 @@ export default function Relatorios() {
 
   function getCota(f, ano) {
     const c = f.cotas_pagamentos?.find(c => c.ano === ano)
-    return c ? { valor: parseFloat(c.valor_total).toFixed(2) + '€', pago: c.pago, membros: c.num_membros } : null
+    return c ? { valor: parseFloat(c.valor_total).toFixed(2) + '€', pago: c.pago } : null
   }
 
   // ── IMPRIMIR LISTAGEM ──
   function imprimirListagem() {
     const dataHoje = new Date().toLocaleDateString('pt-PT')
     const totalFamilias = familiasFiltradas.length
-    const totalMembros = familiasFiltradas.reduce((s, f) => s + (f.familia_membros?.length || 0) + 1, 0)
+    const totalMembros = familiasFiltradas.reduce((s,f) => s + (f.familia_membros?.length||0) + 1, 0)
 
     let html = `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8">
 <title>Listagem — ${nomeConfraria}</title>
@@ -149,27 +156,19 @@ export default function Relatorios() {
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: Arial, sans-serif; font-size: 11px; color: #111; }
   @page { size: A4 portrait; margin: 15mm 12mm; }
-  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #4f46e5; }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #1a5c35; }
   .brand-name { font-size: 14px; font-weight: 700; color: #111; }
-  .doc-title { font-size: 18px; font-weight: 300; color: #4f46e5; margin-top: 2px; }
+  .doc-title { font-size: 18px; font-weight: 300; color: #1a5c35; margin-top: 2px; }
   .meta { text-align: right; font-size: 10px; color: #9ca3af; line-height: 1.6; }
-  .section { font-size: 10px; font-weight: 700; color: #4f46e5; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 0; margin: 12px 0 5px; border-bottom: 1px solid #e0e7ff; }
+  .section { font-size: 10px; font-weight: 700; color: #1a5c35; text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 0; margin: 12px 0 5px; border-bottom: 1px solid #c0dac8; }
   table { width: 100%; border-collapse: collapse; font-size: 10px; }
-  th { text-align: left; padding: 4px 6px; color: #9ca3af; font-weight: 700; font-size: 9px; text-transform: uppercase; background: #f8fafc; }
+  th { text-align: left; padding: 4px 6px; color: #9ca3af; font-weight: 700; font-size: 9px; text-transform: uppercase; background: #f8fdf9; }
   td { padding: 4px 6px; border-bottom: 1px solid #f3f4f6; }
-  tr:nth-child(even) td { background: #fafbff; }
+  tr:nth-child(even) td { background: #f8fdf9; }
   .footer { position: fixed; bottom: 0; left: 0; right: 0; font-size: 9px; color: #9ca3af; display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid #e5e7eb; }
-  .resumo { background: #f8fafc; border: 1px solid #e0e7ff; border-radius: 4px; padding: 8px 12px; margin-top: 16px; display: flex; gap: 24px; font-size: 10px; }
-  .resumo span { color: #6366f1; font-weight: 700; }
 </style></head><body>`
 
-    html += `<div class="header">
-      <div>
-        <div class="brand-name">⚜ ${nomeConfraria}</div>
-        <div class="doc-title">Listagem de Famílias ${filtroEstado === 'ativa' ? '(Ativas)' : filtroEstado === 'inativa' ? '(Inativas)' : ''}</div>
-      </div>
-      <div class="meta">Impresso em ${dataHoje}<br>Total: ${totalFamilias} famílias · ${totalMembros} pessoas<br>Ano ${anoAtual}</div>
-    </div>`
+    html += `<div class="header"><div><div class="brand-name">⚜ ${nomeConfraria}</div><div class="doc-title">Listagem de Famílias</div></div><div class="meta">Impresso em ${dataHoje}<br>${totalFamilias} famílias · ${totalMembros} pessoas</div></div>`
 
     for (const [grupo, lista] of grupos) {
       html += `<div class="section">${grupo} — ${lista.length} famílias</div>`
@@ -178,310 +177,110 @@ export default function Relatorios() {
       html += `</tr></thead><tbody>`
       lista.forEach((f, i) => {
         const cota = getCota(f, anoAtual)
-        html += `<tr><td>${i+1}</td><td>${f.chefe_nome}</td><td>${f.morada||'—'}</td><td>${(f.familia_membros?.length||0)+1}</td>`
+        html += `<tr><td>${i+1}</td><td>${titlePt(f.chefe_nome)}</td><td>${f.morada||'—'}</td><td>${(f.familia_membros?.length||0)+1}</td>`
         if (incluirCotas) html += `<td>${cota?.valor||'—'}</td><td>${cota?(cota.pago?'Sim':'Não'):'—'}</td>`
         html += `</tr>`
       })
       html += `</tbody></table>`
     }
 
-    html += `<div class="resumo">Total de famílias: <span>${totalFamilias}</span> &nbsp;·&nbsp; Total de pessoas: <span>${totalMembros}</span></div>`
-    html += `<div class="footer"><span>${nomeConfraria}</span><span>Impresso em ${dataHoje}</span></div>`
-    html += `</body></html>`
-
+    html += `<div class="footer"><span>${nomeConfraria}</span><span>Impresso em ${dataHoje}</span></div></body></html>`
     const w = window.open('', '_blank')
-    w.document.write(html)
-    w.document.close()
-    w.focus()
+    w.document.write(html); w.document.close(); w.focus()
     setTimeout(() => w.print(), 500)
   }
 
   // ── IMPRIMIR RECIBOS ──
   function imprimirRecibos() {
-    const dataHoje = new Date().toLocaleDateString('pt-PT')
-
-    let html = `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8">
-<title>Recibos — ${nomeConfraria}</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; background: white; }
-  @page { size: A5 landscape; margin: 8mm; }
-
-  .recibo {
-    width: 100%;
-    height: 100%;
-    page-break-after: always;
-    border: 1.5px solid #2d6a4f;
-    display: flex;
-    flex-direction: column;
-    padding: 0;
-    position: relative;
-    background: white;
-  }
-  .recibo:last-child { page-break-after: avoid; }
-
-  /* Cabeçalho verde */
-  .rec-header {
-    background: white;
-    padding: 6px 10px 4px;
-    border-bottom: 1px solid #2d6a4f;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .rec-logo {
-    width: 52px;
-    min-width: 52px;
-    text-align: center;
-    border-right: 1px solid #2d6a4f;
-    padding-right: 8px;
-    margin-right: 4px;
-  }
-  .rec-logo-icon {
-    font-size: 22px;
-    color: #2d6a4f;
-    display: block;
-    line-height: 1;
-  }
-  .rec-logo-text {
-    font-size: 7px;
-    font-weight: 700;
-    color: #2d6a4f;
-    text-align: center;
-    line-height: 1.3;
-    margin-top: 2px;
-  }
-  .rec-title-block {
-    flex: 1;
-    text-align: center;
-  }
-  .rec-title-main {
-    font-size: 13px;
-    font-weight: 700;
-    color: #2d6a4f;
-    letter-spacing: 0.05em;
-  }
-  .rec-title-sub {
-    font-size: 9px;
-    color: #2d6a4f;
-    margin-top: 1px;
-  }
-  .rec-title-nif {
-    font-size: 7px;
-    color: #666;
-    margin-top: 1px;
-  }
-  .rec-meta {
-    display: flex;
-    gap: 0;
-    border-left: 1px solid #2d6a4f;
-    margin-left: 8px;
-  }
-  .rec-meta-box {
-    border-left: 1px solid #2d6a4f;
-    padding: 2px 8px;
-    text-align: center;
-    min-width: 60px;
-  }
-  .rec-meta-box:first-child { border-left: none; }
-  .rec-meta-label {
-    font-size: 7px;
-    color: #2d6a4f;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .rec-meta-value {
-    font-size: 13px;
-    font-weight: 700;
-    color: #111;
-    margin-top: 1px;
-  }
-  .rec-meta-value.valor {
-    font-size: 16px;
-    color: #2d6a4f;
-  }
-
-  /* Campos nome/morada/freguesia/concelho */
-  .rec-fields {
-    padding: 4px 10px;
-    border-bottom: 1px solid #2d6a4f;
-  }
-  .rec-field-row {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    padding: 2px 0;
-    border-bottom: 0.5px solid #d1e7dd;
-  }
-  .rec-field-row:last-child { border-bottom: none; }
-  .rec-field-label {
-    font-size: 7px;
-    font-weight: 700;
-    color: #2d6a4f;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    min-width: 58px;
-  }
-  .rec-field-value {
-    font-size: 10px;
-    color: #111;
-    font-weight: 500;
-  }
-
-  /* Corpo: agregado + observações */
-  .rec-body {
-    display: flex;
-    flex: 1;
-    border-top: none;
-  }
-  .rec-col-header {
-    font-size: 7px;
-    font-weight: 700;
-    color: #2d6a4f;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    text-align: center;
-    padding: 3px;
-    background: #f0f7f4;
-    border-bottom: 0.5px solid #2d6a4f;
-  }
-  .rec-agregado {
-    flex: 3;
-    border-right: 1px solid #2d6a4f;
-    display: flex;
-    flex-direction: column;
-  }
-  .rec-obs {
-    flex: 2;
-    display: flex;
-    flex-direction: column;
-  }
-  .rec-col-body {
-    flex: 1;
-    padding: 4px 8px;
-  }
-  .rec-membro {
-    font-size: 9px;
-    color: #111;
-    padding: 2px 0;
-    border-bottom: 0.3px solid #e8f5f0;
-  }
-  .rec-obs-text {
-    font-size: 9px;
-    color: #444;
-    line-height: 1.4;
-  }
-
-  /* Rodapé */
-  .rec-footer {
-    border-top: 1px solid #2d6a4f;
-    display: flex;
-    justify-content: space-between;
-    padding: 2px 10px;
-    background: #f0f7f4;
-  }
-  .rec-footer-text {
-    font-size: 6px;
-    color: #2d6a4f;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-</style></head><body>`
-
-    // Sort by lugar then nome
-    const sorted = [...familiasRecibos].sort((a, b) => {
-      const luA = a.lugar?.nome || ''
-      const luB = b.lugar?.nome || ''
+    const recibosOrdenados = [...familiasRecibos].sort((a, b) => {
+      const luA = a.lugar?.nome || ''; const luB = b.lugar?.nome || ''
       if (luA !== luB) return luA.localeCompare(luB)
       return a.chefe_nome.localeCompare(b.chefe_nome)
     })
 
-    sorted.forEach((f, idx) => {
+    const css = `
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body { font-family: Arial, Helvetica, sans-serif; background: white; }
+      @page { size: A5 landscape; margin: 6mm; }
+      .recibo { width: 100%; height: 196mm; page-break-after: always; background: white; border: 1px solid #1a5c35; display: flex; flex-direction: column; overflow: hidden; }
+      .recibo:last-child { page-break-after: avoid; }
+      .header { display: flex; border-bottom: 1.5px solid #1a5c35; flex-shrink: 0; height: 32mm; }
+      .logo-col { width: 34mm; min-width: 34mm; display: flex; align-items: center; justify-content: center; padding: 3mm; border-right: 0.5px solid #c0dac8; }
+      .logo-img { max-width: 30mm; max-height: 28mm; object-fit: contain; }
+      .title-col { flex: 1; display: flex; flex-direction: column; }
+      .title-top { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2mm 4mm; border-bottom: 0.5px solid #c0dac8; }
+      .title-name { font-size: 11pt; font-weight: 700; color: #1a5c35; letter-spacing: 0.06em; }
+      .title-sub { font-size: 7pt; color: #2d6a4f; margin-top: 1.5mm; letter-spacing: 0.04em; }
+      .title-nif { font-size: 6pt; color: #5a8a72; margin-top: 1mm; }
+      .meta-row { display: flex; height: 12mm; flex-shrink: 0; }
+      .meta-box { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 1mm 2mm; border-right: 0.5px solid #c0dac8; gap: 1px; }
+      .meta-box:last-child { border-right: none; flex: 2; }
+      .meta-label { font-size: 5pt; font-weight: 700; color: #2d6a4f; text-transform: uppercase; letter-spacing: 0.15em; }
+      .meta-val { font-size: 14pt; font-weight: 700; color: #111; line-height: 1; }
+      .meta-val.green { color: #1a5c35; font-size: 16pt; }
+      .fields { border-bottom: 1.5px solid #1a5c35; flex-shrink: 0; background: #f8fdf9; }
+      .field { display: grid; grid-template-columns: 23mm 1fr; align-items: center; padding: 1.2mm 4mm; border-bottom: 0.3px solid #ddeee5; min-height: 7mm; }
+      .field:last-child { border-bottom: none; }
+      .flabel { font-size: 5.5pt; font-weight: 700; color: #2d6a4f; letter-spacing: 0.2em; text-transform: uppercase; }
+      .fvalue { font-size: 9pt; color: #111; font-family: "Palatino Linotype", Georgia, serif; border-bottom: 0.3px solid #b8d4c4; padding-bottom: 0.5mm; }
+      .body { flex: 1; display: flex; overflow: hidden; }
+      .col-agregado { flex: 58; border-right: 1.5px solid #1a5c35; display: flex; flex-direction: column; }
+      .col-obs { flex: 42; display: flex; flex-direction: column; }
+      .col-header { font-size: 6pt; font-weight: 700; color: #1a5c35; letter-spacing: 0.18em; text-transform: uppercase; text-align: center; padding: 1.5mm; border-bottom: 0.5px solid #1a5c35; background: #eef8f2; }
+      .col-body { flex: 1; padding: 2mm 4mm; overflow: hidden; }
+      .membro { font-size: 8.5pt; color: #111; padding: 1.2mm 0; border-bottom: 0.2px solid #e4f0e8; font-family: "Palatino Linotype", Georgia, serif; }
+      .obs-text { font-size: 8pt; color: #444; line-height: 1.5; font-style: italic; font-family: "Palatino Linotype", Georgia, serif; }
+      .footer { border-top: 0.5px solid #1a5c35; padding: 1mm 4mm; background: #eef8f2; flex-shrink: 0; }
+      .footer-txt { font-size: 5pt; color: #2d6a4f; text-transform: uppercase; letter-spacing: 0.1em; opacity: 0.75; }
+    `
+
+    let body = ''
+    recibosOrdenados.forEach((f, idx) => {
       const cota = f.cotas_pagamentos?.find(c => c.ano === anoRecibo)
-      const valor = cota ? parseFloat(cota.valor_total).toFixed(2) : '0.00'
-      const numRecibo = f.numero_cota || '—'
+      const valor = cota ? parseFloat(cota.valor_total).toFixed(2).replace('.', ',') + ' €' : '0,00 €'
+      const numRecibo = f.numero_cota || String(idx + 1)
       const membros = f.familia_membros || []
       const lugarMorada = [f.lugar?.nome, f.morada].filter(Boolean).join(' - ')
 
-      html += `<div class="recibo">
-        <div class="rec-header">
-          <div class="rec-logo">
-            <span class="rec-logo-icon">⚜</span>
-            <div class="rec-logo-text">CONFRARIA<br>DAS<br>ALMAS<br><span style="color:#1a6b3c;font-size:8px;font-weight:900">GAVIÃO</span></div>
-          </div>
-          <div class="rec-title-block">
-            <div class="rec-title-main">CONFRARIA DAS ALMAS</div>
-            <div class="rec-title-sub">GAVIÃO - V. N. FAMALICÃO</div>
-            <div class="rec-title-nif">CONTRIBUINTE N.º 501 467 262</div>
-          </div>
-          <div class="rec-meta">
-            <div class="rec-meta-box">
-              <div class="rec-meta-label">Ano</div>
-              <div class="rec-meta-value">${anoRecibo}</div>
+      body += `<div class="recibo">
+        <div class="header">
+          <div class="logo-col"><img src="/logo.png" class="logo-img" /></div>
+          <div class="title-col">
+            <div class="title-top">
+              <div class="title-name">CONFRARIA DAS ALMAS</div>
+              <div class="title-sub">Gavião &mdash; V. N. Famalicão</div>
+              <div class="title-nif">Contribuinte N.º 501 467 262</div>
             </div>
-            <div class="rec-meta-box">
-              <div class="rec-meta-label">N.º Recibo</div>
-              <div class="rec-meta-value">${numRecibo}</div>
-            </div>
-            <div class="rec-meta-box">
-              <div class="rec-meta-label">Valor Euros</div>
-              <div class="rec-meta-value valor">${valor}</div>
-            </div>
-            <div class="rec-meta-box">
-              <div class="rec-meta-label">Página</div>
-              <div class="rec-meta-value">${idx + 1}</div>
+            <div class="meta-row">
+              <div class="meta-box"><div class="meta-label">Ano</div><div class="meta-val">${anoRecibo}</div></div>
+              <div class="meta-box"><div class="meta-label">N.º Recibo</div><div class="meta-val">${numRecibo}</div></div>
+              <div class="meta-box"><div class="meta-label">Valor Euros</div><div class="meta-val green">${valor}</div></div>
             </div>
           </div>
         </div>
-
-        <div class="rec-fields">
-          <div class="rec-field-row">
-            <span class="rec-field-label">N O M E</span>
-            <span class="rec-field-value">${f.chefe_nome}</span>
+        <div class="fields">
+          <div class="field"><span class="flabel">N O M E</span><span class="fvalue">${titlePt(f.chefe_nome)}</span></div>
+          <div class="field"><span class="flabel">M O R A D A</span><span class="fvalue">${lugarMorada || '—'}</span></div>
+          <div class="field"><span class="flabel">F R E G U E S I A</span><span class="fvalue">${f.freguesia?.nome || '—'}</span></div>
+          <div class="field"><span class="flabel">C O N C E L H O</span><span class="fvalue">Vila Nova de Famalicão</span></div>
+        </div>
+        <div class="body">
+          <div class="col-agregado">
+            <div class="col-header">Agregado Familiar</div>
+            <div class="col-body">${membros.map(m => `<div class="membro">${m.nome}</div>`).join('')}</div>
           </div>
-          <div class="rec-field-row">
-            <span class="rec-field-label">M O R A D A</span>
-            <span class="rec-field-value">${lugarMorada || '—'}</span>
-          </div>
-          <div class="rec-field-row">
-            <span class="rec-field-label">F R E G U E S I A</span>
-            <span class="rec-field-value">${f.freguesia?.nome || '—'}</span>
-          </div>
-          <div class="rec-field-row">
-            <span class="rec-field-label">C O N C E L H O</span>
-            <span class="rec-field-value">Vila Nova de Famalicão</span>
+          <div class="col-obs">
+            <div class="col-header">Observa&ccedil;&otilde;es</div>
+            <div class="col-body obs-text">${f.observacoes || ''}</div>
           </div>
         </div>
-
-        <div class="rec-body">
-          <div class="rec-agregado">
-            <div class="rec-col-header">Agregado Familiar</div>
-            <div class="rec-col-body">
-              ${membros.map(m => `<div class="rec-membro">${m.nome}</div>`).join('')}
-            </div>
-          </div>
-          <div class="rec-obs">
-            <div class="rec-col-header">Observações</div>
-            <div class="rec-col-body">
-              <div class="rec-obs-text">${f.observacoes || ''}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="rec-footer">
-          <span class="rec-footer-text">Processado por Computador</span>
-          <span class="rec-footer-text">Organigráfica</span>
-        </div>
+        <div class="footer"><span class="footer-txt">Processado por Computador</span></div>
       </div>`
     })
 
-    html += `</body></html>`
-
+    const html = `<!DOCTYPE html><html lang="pt"><head><meta charset="UTF-8"><title>Recibos</title><style>${css}</style></head><body>${body}</body></html>`
     const w = window.open('', '_blank')
-    w.document.write(html)
-    w.document.close()
-    w.focus()
+    w.document.write(html); w.document.close(); w.focus()
     setTimeout(() => w.print(), 600)
   }
 
@@ -492,17 +291,15 @@ export default function Relatorios() {
     for (const [, lista] of grupos) {
       for (const f of lista) {
         const cota = getCota(f, anoAtual)
-        rows.push([seq++, f.chefe_nome, f.lugar?.nome||'', f.freguesia?.nome||'', f.morada||'', (f.familia_membros?.length||0)+1, cota?.valor||'', cota?(cota.pago?'Sim':'Não'):''])
+        rows.push([seq++, titlePt(f.chefe_nome), f.lugar?.nome||'', f.freguesia?.nome||'', f.morada||'', (f.familia_membros?.length||0)+1, cota?.valor||'', cota?(cota.pago?'Sim':'Não'):''])
       }
     }
     const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n')
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
-    a.href = url
-    a.download = `listagem_${new Date().toISOString().slice(0,10)}.csv`
-    a.click()
-    URL.revokeObjectURL(url)
+    a.href = url; a.download = `listagem_${new Date().toISOString().slice(0,10)}.csv`
+    a.click(); URL.revokeObjectURL(url)
   }
 
   const lugaresOpts = lugares.map(l => ({ value: l.id.toString(), label: l.nome }))
@@ -524,7 +321,6 @@ export default function Relatorios() {
             <button onClick={imprimirListagem} style={{padding:'0.45rem 1rem',fontSize:'13px',fontWeight:500,background:'#4f46e5',color:'white',border:'none',borderRadius:'8px',cursor:'pointer'}}>🖨 Imprimir</button>
           </div>
         </div>
-
         <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center',marginBottom:'1rem',padding:'0.75rem',background:'#f8fafc',borderRadius:'8px',border:'1px solid #e5e7eb'}}>
           <span style={{fontSize:'12px',color:'#6b7280',fontWeight:500}}>Filtros:</span>
           <MultiSelect label="freguesias" options={freguesiasOpts} selected={filtroFreguesias} onChange={setFiltroFreguesias} />
@@ -543,13 +339,12 @@ export default function Relatorios() {
             <input value={nomeConfraria} onChange={e => setNomeConfraria(e.target.value)} style={{fontSize:'12px',padding:'3px 8px',width:'200px'}} />
           </div>
         </div>
-
         {loading ? <p style={{fontSize:'13px',color:'#9ca3af'}}>A carregar...</p> : (
           <div>
             <div style={{display:'flex',gap:'16px',marginBottom:'0.75rem'}}>
-              <div style={{fontSize:'13px',color:'#374151'}}><span style={{fontWeight:500,color:'#4f46e5'}}>{familiasFiltradas.length}</span> famílias</div>
-              <div style={{fontSize:'13px',color:'#374151'}}><span style={{fontWeight:500,color:'#4f46e5'}}>{grupos.length}</span> grupos</div>
-              <div style={{fontSize:'13px',color:'#374151'}}><span style={{fontWeight:500,color:'#4f46e5'}}>{familiasFiltradas.reduce((s,f) => s+(f.familia_membros?.length||0)+1, 0)}</span> pessoas</div>
+              <div style={{fontSize:'13px'}}><span style={{fontWeight:500,color:'#4f46e5'}}>{familiasFiltradas.length}</span> famílias</div>
+              <div style={{fontSize:'13px'}}><span style={{fontWeight:500,color:'#4f46e5'}}>{grupos.length}</span> grupos</div>
+              <div style={{fontSize:'13px'}}><span style={{fontWeight:500,color:'#4f46e5'}}>{familiasFiltradas.reduce((s,f)=>s+(f.familia_membros?.length||0)+1,0)}</span> pessoas</div>
             </div>
             <div style={{maxHeight:'300px',overflowY:'auto',border:'1px solid #e5e7eb',borderRadius:'8px'}}>
               <table style={{width:'100%',borderCollapse:'collapse',fontSize:'12px'}}>
@@ -571,7 +366,7 @@ export default function Relatorios() {
                         const cota = getCota(f, anoAtual)
                         return (
                           <tr key={f.id} style={{borderBottom:'1px solid #f9fafb'}}>
-                            <td style={{padding:'4px 10px',color:'#111'}}>{f.chefe_nome}</td>
+                            <td style={{padding:'4px 10px'}}>{titlePt(f.chefe_nome)}</td>
                             <td style={{padding:'4px 10px',color:'#6b7280'}}>{f.lugar?.nome||'—'} · {f.freguesia?.nome||'—'}</td>
                             <td style={{padding:'4px 10px',textAlign:'center',color:'#6b7280'}}>{(f.familia_membros?.length||0)+1}</td>
                             {incluirCotas && <td style={{padding:'4px 10px',textAlign:'center',color:cota?.pago?'#059669':'#dc2626',fontWeight:500}}>{cota?.valor||'—'}</td>}
@@ -596,7 +391,6 @@ export default function Relatorios() {
           </div>
           <button onClick={imprimirRecibos} style={{padding:'0.45rem 1rem',fontSize:'13px',fontWeight:500,background:'#059669',color:'white',border:'none',borderRadius:'8px',cursor:'pointer'}}>🖨 Imprimir Recibos</button>
         </div>
-
         <div style={{display:'flex',gap:'8px',flexWrap:'wrap',alignItems:'center',padding:'0.75rem',background:'#f8fafc',borderRadius:'8px',border:'1px solid #e5e7eb',marginBottom:'1rem'}}>
           <span style={{fontSize:'12px',color:'#6b7280',fontWeight:500}}>Filtros:</span>
           <MultiSelect label="freguesias" options={freguesiasOpts} selected={filtroFreguesiasRec} onChange={setFiltroFreguesiasRec} />
@@ -609,7 +403,6 @@ export default function Relatorios() {
             </select>
           </div>
         </div>
-
         <div style={{fontSize:'13px',color:'#374151'}}>
           <span style={{fontWeight:500,color:'#059669'}}>{familiasRecibos.length}</span> recibos a imprimir
           {filtroFreguesiasRec.length === 0 && filtroLugaresRec.length === 0 && (
