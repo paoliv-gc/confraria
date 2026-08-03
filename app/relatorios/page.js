@@ -202,9 +202,9 @@ export default function Relatorios() {
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: Arial, Helvetica, sans-serif; background: white; }
       @page { size: 210mm 148mm; margin: 5mm; }
-      .recibo { width: 100%; height: 196mm; page-break-after: always; background: white; border: 1px solid #1a5c35; display: flex; flex-direction: column; overflow: hidden; }
+      .recibo { width: 100%; height: 136mm; page-break-after: always; background: white; border: 1px solid #1a5c35; display: flex; flex-direction: column; overflow: hidden; }
       .recibo:last-child { page-break-after: avoid; }
-      .header { display: flex; border-bottom: 1.5px solid #1a5c35; flex-shrink: 0; height: 32mm; }
+      .header { display: flex; border-bottom: 1.5px solid #1a5c35; flex-shrink: 0; height: 26mm; }
       .logo-col { width: 34mm; min-width: 34mm; display: flex; align-items: center; justify-content: center; padding: 3mm; border-right: 0.5px solid #c0dac8; }
       .logo-img { max-width: 30mm; max-height: 28mm; object-fit: contain; }
       .title-col { flex: 1; display: flex; flex-direction: column; }
@@ -219,7 +219,7 @@ export default function Relatorios() {
       .meta-val { font-size: 14pt; font-weight: 700; color: #111; line-height: 1; }
       .meta-val.green { color: #1a5c35; font-size: 16pt; }
       .fields { border-bottom: 1.5px solid #1a5c35; flex-shrink: 0; background: #f8fdf9; }
-      .field { display: grid; grid-template-columns: 23mm 1fr; align-items: center; padding: 1.2mm 4mm; border-bottom: 0.3px solid #ddeee5; min-height: 7mm; }
+      .field { display: grid; grid-template-columns: 23mm 1fr; align-items: center; padding: 0.8mm 4mm; border-bottom: 0.3px solid #ddeee5; min-height: 5.5mm; }
       .field:last-child { border-bottom: none; }
       .flabel { font-size: 5.5pt; font-weight: 700; color: #2d6a4f; letter-spacing: 0.2em; text-transform: uppercase; }
       .fvalue { font-size: 9pt; color: #111; font-family: "Palatino Linotype", Georgia, serif; border-bottom: 0.3px solid #b8d4c4; padding-bottom: 0.5mm; }
