@@ -76,7 +76,7 @@ export default function Relatorios() {
     async function init() {
       const [famRes, lugRes, freqRes] = await Promise.all([
         supabase.from('familias').select(`
-          id, chefe_nome, ativo, morada, observacoes,
+          id, chefe_nome, ativo, morada, observacoes, numero_cota,
           lugar:lugar_id(id,nome), freguesia:freguesia_id(id,nome),
           familia_membros(id,nome),
           cotas_pagamentos(ano,num_membros,valor_total,pago)
@@ -201,7 +201,7 @@ export default function Relatorios() {
     const css = `
       * { box-sizing: border-box; margin: 0; padding: 0; }
       body { font-family: Arial, Helvetica, sans-serif; background: white; }
-      @page { size: A5 landscape; margin: 6mm; }
+      @page { size: 210mm 148mm; margin: 5mm; }
       .recibo { width: 100%; height: 196mm; page-break-after: always; background: white; border: 1px solid #1a5c35; display: flex; flex-direction: column; overflow: hidden; }
       .recibo:last-child { page-break-after: avoid; }
       .header { display: flex; border-bottom: 1.5px solid #1a5c35; flex-shrink: 0; height: 32mm; }
